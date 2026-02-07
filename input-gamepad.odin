@@ -35,11 +35,16 @@ GamePadType :: enum {
 	None,
 }
 
+TextureOption :: struct {
+	name:    string,
+	texture: raylib.Texture2D,
+}
+
 isSettingsWindowOpen := false
 userSelectedPad: GamePadType = .None
 
-customPs3Textures: [100]raylib.Texture2D = {}
-customXboxTextures: [100]raylib.Texture2D = {}
+customPs3Textures: [100]TextureOption = {}
+customXboxTextures: [100]TextureOption = {}
 
 main :: proc() {
 	screenWidth: c.int = 800
@@ -54,7 +59,12 @@ main :: proc() {
 	vibrateButton: raylib.Rectangle
 
 	gamepadIndexSelected: c.int = 0
+	lastGamepadIndexValue: c.int = 0
 	isGamepadSelectorEditMode := false
+
+	hasSelectedCustomTexture := false
+	customeTextureIndex: c.int = -1
+	isCustomTextureEditMode := false
 
 	lenOfPs3Textures := getTextureCandidates("./resources/ps3", &customPs3Textures)
 	lenOfXboxTextures := getTextureCandidates("./resources/xbox/", &customXboxTextures)
@@ -98,9 +108,51 @@ main :: proc() {
 			if selected {
 				isGamepadSelectorEditMode = !isGamepadSelectorEditMode
 				userSelectedPad = GamePadType(gamepadIndexSelected)
-				//TODO: if the user has a custom texture loaded unload the texture and use the default one
+				if gamepadIndexSelected != lastGamepadIndexValue {
+					customeTextureIndex = -1
+					hasSelectedCustomTexture = false
+					lastGamepadIndexValue = gamepadIndexSelected
+				}
 			}
 		}
+
+
+		padType: GamePadType
+
+		if userSelectedPad != .None {
+			padType = userSelectedPad
+		} else {
+			padType = getGamePadType()
+		}
+
+		if isSettingsWindowOpen &&
+		   ((padType == .Ps3 && lenOfPs3Textures > 0) ||
+				   (padType == .Xbox && lenOfXboxTextures > 0)) {
+
+			options: cstring = ""
+			if padType == .Ps3 {
+				options = getCustomTextureOptions(&customPs3Textures, lenOfPs3Textures)
+			}
+
+			if padType == .Xbox {
+				options = getCustomTextureOptions(&customXboxTextures, lenOfXboxTextures)
+			}
+
+			selected := raylib.GuiDropdownBox(
+				{320, 5, 200, 25},
+				options,
+				&customeTextureIndex,
+				isCustomTextureEditMode,
+			)
+			if selected {
+				isCustomTextureEditMode = !isCustomTextureEditMode
+			}
+
+			if customeTextureIndex >= 0 {
+				hasSelectedCustomTexture = true
+			}
+		}
+
 
 		leftStickX = raylib.GetGamepadAxisMovement(gamepad, .LEFT_X)
 		leftStickY = raylib.GetGamepadAxisMovement(gamepad, .LEFT_Y)
@@ -129,19 +181,19 @@ main :: proc() {
 			rightTrigger = -1
 		}
 
-		padType: GamePadType
-
-		if userSelectedPad != .None {
-			padType = userSelectedPad
-		} else {
-			padType = getGamePadType()
-		}
-
 		switch padType {
 		case .Xbox:
-			drawXboxPad(defaultXboxPad)
+			if hasSelectedCustomTexture {
+				drawXboxPad(customXboxTextures[customeTextureIndex].texture)
+			} else {
+				drawXboxPad(defaultXboxPad)
+			}
 		case .Ps3:
-			drawPs3Pad(defaultPs3Pad)
+			if hasSelectedCustomTexture {
+				drawPs3Pad(customPs3Textures[customeTextureIndex].texture)
+			} else {
+				drawPs3Pad(defaultPs3Pad)
+			}
 		case .Generic:
 			drawGenericPad()
 		case .None:
@@ -155,11 +207,11 @@ main :: proc() {
 	raylib.UnloadTexture(defaultXboxPad)
 
 	for i := 0; i < lenOfPs3Textures; i += 1 {
-		raylib.UnloadTexture(customPs3Textures[i])
+		raylib.UnloadTexture(customPs3Textures[i].texture)
 	}
 
 	for i := 0; i < lenOfXboxTextures; i += 1 {
-		raylib.UnloadTexture(customXboxTextures[i])
+		raylib.UnloadTexture(customXboxTextures[i].texture)
 	}
 
 	raylib.CloseWindow()
@@ -450,7 +502,7 @@ getGamePadType :: proc() -> GamePadType {
 	return .Generic
 }
 
-getTextureCandidates :: proc(dirPath: string, textureArray: ^[100]raylib.Texture2D) -> int {
+getTextureCandidates :: proc(dirPath: string, textureArray: ^[100]TextureOption) -> int {
 	files, readError := os2.read_all_directory_by_path(dirPath, context.allocator)
 	if readError != nil {
 		fmt.panicf("Failed to read path %s with error %s \n", dirPath, readError)
@@ -473,10 +525,30 @@ getTextureCandidates :: proc(dirPath: string, textureArray: ^[100]raylib.Texture
 			continue
 		}
 
-		textureArray[index] = raylib.LoadTexture(strings.clone_to_cstring(file.fullpath))
+		textureArray[index] = {
+			name    = file.name,
+			texture = raylib.LoadTexture(strings.clone_to_cstring(file.fullpath)),
+		}
 
 		index += 1
 	}
 
 	return index
+}
+
+getCustomTextureOptions :: proc(textures: ^[100]TextureOption, listLen: int) -> cstring {
+	options: [dynamic]string = {}
+	sep :: ";"
+
+	for i := 0; i < listLen; i += 1 {
+		if i != 0 {
+			append(&options, ";")
+		}
+
+		append(&options, textures[i].name)
+	}
+
+	res := strings.concatenate(options[:])
+
+	return strings.clone_to_cstring(res, context.allocator)
 }

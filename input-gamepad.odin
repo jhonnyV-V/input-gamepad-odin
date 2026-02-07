@@ -116,7 +116,6 @@ main :: proc() {
 			}
 		}
 
-
 		padType: GamePadType
 
 		if userSelectedPad != .None {
@@ -153,6 +152,16 @@ main :: proc() {
 			}
 		}
 
+		if isSettingsWindowOpen {
+			if raylib.GuiButton({680, 5, 100, 25}, "Reset") {
+				padType = getGamePadType()
+				userSelectedPad = .None
+				hasSelectedCustomTexture = false
+				lastGamepadIndexValue = 0
+				gamepadIndexSelected = 0
+				customeTextureIndex = -1
+			}
+		}
 
 		leftStickX = raylib.GetGamepadAxisMovement(gamepad, .LEFT_X)
 		leftStickY = raylib.GetGamepadAxisMovement(gamepad, .LEFT_Y)

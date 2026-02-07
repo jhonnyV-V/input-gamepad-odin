@@ -1,9 +1,11 @@
 package main
 
+import "core:strings"
 //initial code and assets provide by https://github.com/raysan5/raylib/blob/master/examples/core/core_input_gamepad.c
 
 import "core:c"
 import "core:fmt"
+import "core:os/os2"
 import "vendor:raylib"
 
 XBOX_ALIAS_1: cstring = "xbox"
@@ -33,22 +35,11 @@ GamePadType :: enum {
 	None,
 }
 
-getGamePadType :: proc() -> GamePadType {
-	if raylib.TextFindIndex(raylib.TextToLower(raylib.GetGamepadName(gamepad)), XBOX_ALIAS_1) >
-		   -1 ||
-	   raylib.TextFindIndex(raylib.TextToLower(raylib.GetGamepadName(gamepad)), XBOX_ALIAS_2) >
-		   -1 {
-		return .Xbox
-	}
-	if raylib.TextFindIndex(raylib.TextToLower(raylib.GetGamepadName(gamepad)), PS_ALIAS) > -1 {
-		return .Ps3
-	}
-
-	return .Generic
-}
-
 isSettingsWindowOpen := false
 userSelectedPad: GamePadType = .None
+
+customPs3Textures: [100]raylib.Texture2D = {}
+customXboxTextures: [100]raylib.Texture2D = {}
 
 main :: proc() {
 	screenWidth: c.int = 800
@@ -64,6 +55,9 @@ main :: proc() {
 
 	gamepadIndexSelected: c.int = 0
 	isGamepadSelectorEditMode := false
+
+	lenOfPs3Textures := getTextureCandidates("./resources/ps3", &customPs3Textures)
+	lenOfXboxTextures := getTextureCandidates("./resources/xbox/", &customXboxTextures)
 
 	for !raylib.WindowShouldClose() {
 		raylib.BeginDrawing()
@@ -104,6 +98,7 @@ main :: proc() {
 			if selected {
 				isGamepadSelectorEditMode = !isGamepadSelectorEditMode
 				userSelectedPad = GamePadType(gamepadIndexSelected)
+				//TODO: if the user has a custom texture loaded unload the texture and use the default one
 			}
 		}
 
@@ -158,6 +153,14 @@ main :: proc() {
 
 	raylib.UnloadTexture(defaultPs3Pad)
 	raylib.UnloadTexture(defaultXboxPad)
+
+	for i := 0; i < lenOfPs3Textures; i += 1 {
+		raylib.UnloadTexture(customPs3Textures[i])
+	}
+
+	for i := 0; i < lenOfXboxTextures; i += 1 {
+		raylib.UnloadTexture(customXboxTextures[i])
+	}
 
 	raylib.CloseWindow()
 }
@@ -431,4 +434,49 @@ drawPs3Pad :: proc(texPs3Pad: raylib.Texture2D) {
 	raylib.DrawRectangle(611, 148, 15, 70, raylib.GRAY)
 	raylib.DrawRectangle(169, 148, 15, c.int(((1 + leftTrigger) / 2) * 70), raylib.RED)
 	raylib.DrawRectangle(611, 148, 15, c.int(((1 + rightTrigger) / 2) * 70), raylib.RED)
+}
+
+getGamePadType :: proc() -> GamePadType {
+	if raylib.TextFindIndex(raylib.TextToLower(raylib.GetGamepadName(gamepad)), XBOX_ALIAS_1) >
+		   -1 ||
+	   raylib.TextFindIndex(raylib.TextToLower(raylib.GetGamepadName(gamepad)), XBOX_ALIAS_2) >
+		   -1 {
+		return .Xbox
+	}
+	if raylib.TextFindIndex(raylib.TextToLower(raylib.GetGamepadName(gamepad)), PS_ALIAS) > -1 {
+		return .Ps3
+	}
+
+	return .Generic
+}
+
+getTextureCandidates :: proc(dirPath: string, textureArray: ^[100]raylib.Texture2D) -> int {
+	files, readError := os2.read_all_directory_by_path(dirPath, context.allocator)
+	if readError != nil {
+		fmt.panicf("Failed to read path %s with error %s \n", dirPath, readError)
+	}
+
+	index := 0
+
+
+	for file in files {
+
+		if file.type != .Regular {
+			continue
+		}
+
+		if file.name == "default.png" {
+			continue
+		}
+
+		if !strings.contains(file.name, ".png") {
+			continue
+		}
+
+		textureArray[index] = raylib.LoadTexture(strings.clone_to_cstring(file.fullpath))
+
+		index += 1
+	}
+
+	return index
 }

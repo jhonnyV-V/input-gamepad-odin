@@ -87,14 +87,7 @@ main :: proc() {
 			continue
 		}
 
-		settingsButtonMessage: cstring = ""
-		if isSettingsWindowOpen {
-			settingsButtonMessage = "close settings"
-		} else {
-			settingsButtonMessage = "open settings"
-		}
-
-		if raylib.GuiButton({5, 5, 95, 25}, settingsButtonMessage) {
+		if raylib.IsWindowFocused() && raylib.IsKeyReleased(.H) {
 			isSettingsWindowOpen = !isSettingsWindowOpen
 		}
 

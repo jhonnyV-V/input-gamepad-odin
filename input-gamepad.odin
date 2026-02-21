@@ -50,7 +50,7 @@ main :: proc() {
 	screenWidth: c.int = 800
 	screenHeight: c.int = 600
 	raylib.SetConfigFlags({.MSAA_4X_HINT})
-	raylib.InitWindow(screenWidth, screenHeight, "raylib [core] example - input gamepad")
+	raylib.InitWindow(screenWidth, screenHeight, "input gamepad overlay")
 	raylib.SetTargetFPS(60)
 
 	defaultPs3Pad: raylib.Texture2D = raylib.LoadTexture("./resources/ps3/default.png")
@@ -221,7 +221,7 @@ main :: proc() {
 
 drawGenericPad :: proc() {
 
-	raylib.DrawRectangleRounded({175, 210, 460, 220}, 0.3, 16, raylib.DARKGRAY)
+	raylib.DrawRectangleRounded({175, 210, 460, 220}, 0.3, 16, raylib.WHITE)
 
 	// raylib.Draw buttons: basic
 	raylib.DrawCircle(365, 270, 12, raylib.RAYWHITE)
@@ -316,7 +316,7 @@ drawGenericPad :: proc() {
 }
 
 drawXboxPad :: proc(texXboxPad: raylib.Texture2D) {
-	raylib.DrawTexture(texXboxPad, 0, 100, raylib.DARKGRAY)
+	raylib.DrawTexture(texXboxPad, 0, 100, raylib.WHITE)
 
 	// Draw buttons: xbox home
 	if raylib.IsGamepadButtonDown(gamepad, .MIDDLE) {
@@ -404,7 +404,7 @@ drawXboxPad :: proc(texXboxPad: raylib.Texture2D) {
 }
 
 drawPs3Pad :: proc(texPs3Pad: raylib.Texture2D) {
-	raylib.DrawTexture(texPs3Pad, 0, 100, raylib.DARKGRAY)
+	raylib.DrawTexture(texPs3Pad, 0, 100, raylib.WHITE)
 
 	// Draw buttons: ps
 	if raylib.IsGamepadButtonDown(gamepad, .MIDDLE) {
